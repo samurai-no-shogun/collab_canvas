@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Collaborative Canvas</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            font-family: Arial, sans-serif;
+            min-height: 100vh;
+        }
+        header {
+            width: 100%;
+            background-color: #f0f0f0;
+            padding: 10px 0;
+            text-align: center;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        #stats {
+            font-size: 14px;
+            margin-bottom: 10px;
+        }
+        #colorPicker {
+            margin: 10px 0;
+        }
+        #canvasContainer {
+            width: 100%;
+            max-width: 1000px;
+            overflow: auto;
+            border: 1px solid #333;
+            flex-grow: 1;
+        }
+        #pixelCanvas {
+            display: grid;
+            grid-template-columns: repeat(50, 1fr);
+            gap: 1px;
+            background-color: #ccc;
+        }
+        .pixel {
+            aspect-ratio: 1 / 1;
+            background-color: white;
+            box-shadow: 0 0 1px rgba(0,0,0,0.1);
+            touch-action: manipulation;
+        }
+        .colorSwatch {
+            display: inline-block;
+            width: 15px;
+            height: 15px;
+            margin-right: 5px;
+            border: 1px solid #000;
+            vertical-align: middle;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <div id="stats"></div>
+        <input type="color" id="colorPicker" value="#000000">
+    </header>
+    <div id="canvasContainer">
+        <div id="pixelCanvas"></div>
+    </div>
+    <script>
+        const pixelCanvas = document.getElementById('pixelCanvas');
+        const colorPicker = document.getElementById('colorPicker');
+        const stats = document.getElementById('stats');
+        let currentColor = '#000000';
+        const totalPixels = 50 * 500;
+        let colorCounts = {};
+        let ws;
+
+        async function init() {
+            createPixelGrid();
+            await loadInitialState();
+            setupWebSocket();
+        }
+
+        function createPixelGrid() {
+            const fragment = document.createDocumentFragment();
+            for (let i = 0; i < totalPixels; i++) {
+                const pixel = document.createElement('div');
+                pixel.className = 'pixel';
+                pixel.dataset.index = i;
+                fragment.appendChild(pixel);
+            }
+            pixelCanvas.appendChild(fragment);
+            pixelCanvas.addEventListener('click', handlePixelClick);
+        }
+
+        async function loadInitialState() {
+            const response = await fetch('/state');
+            const state = await response.json();
+            Object.entries(state).forEach(([index, color]) => {
+                updatePixel(parseInt(index), color);
+            });
+            updateStats();
+        }
+
+        function setupWebSocket() {
+            ws = new WebSocket(`ws://${window.location.host}/ws`);
+            ws.onmessage = (event) => {
+                const update = JSON.parse(event.data);
+                updatePixel(update.index, update.color);
+            };
+        }
+
+        function handlePixelClick(event) {
+            if (event.target.classList.contains('pixel')) {
+                const index = parseInt(event.target.dataset.index);
+                updatePixel(index, currentColor);
+                ws.send(JSON.stringify({ index, color: currentColor }));
+            }
+        }
+
+        function updatePixel(index, color) {
+            const pixel = pixelCanvas.children[index];
+            const oldColor = pixel.style.backgroundColor || 'white';
+            pixel.style.backgroundColor = color;
+            updateColorCount(oldColor, -1);
+            updateColorCount(color, 1);
+            updateStats();
+        }
+
+        function updateColorCount(color, change) {
+            if (color === 'white' || color === '') color = '#ffffff';
+            colorCounts[color] = (colorCounts[color] || 0) + change;
+            if (colorCounts[color] <= 0) delete colorCounts[color];
+        }
+
+        function updateStats() {
+            const coloredPixels = Object.values(colorCounts).reduce((a, b) => a + b, 0);
+            const uncolored = totalPixels - coloredPixels;
+            const topColors = Object.entries(colorCounts)
+                .sort((a, b) => b[1] - a[1])
+                .slice(0, 3);
+
+            let statsHtml = `Colored: ${(coloredPixels/totalPixels*100).toFixed(2)}% | Uncolored: ${(uncolored/totalPixels*100).toFixed(2)}% | Top colors: `;
+            
+            topColors.forEach(([color, count]) => {
+                statsHtml += `<span class="colorSwatch" style="background-color:${color};"></span>${(count/totalPixels*100).toFixed(2)}% `;
+            });
+
+            stats.innerHTML = statsHtml;
+        }
+
+        colorPicker.addEventListener('change', (event) => {
+            currentColor = event.target.value;
+        });
+
+        init();
+    </script>
+</body>
+</html>
