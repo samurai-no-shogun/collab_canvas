@@ -33,8 +33,8 @@ impl Canvas {
         self.pixels[index].clone()
     }
 
-    pub fn serialize_update(&self, x: usize, y: usize, color: String) -> JsValue {
+    pub fn serialize_update(&self, x: usize, y: usize, color: String) -> Result<JsValue, JsValue> {
         let update = Update { x, y, color };
-        JsValue::from_serde(&update).unwrap()
+        serde_wasm_bindgen::to_value(&update).map_err(|e| e.into())
     }
 }

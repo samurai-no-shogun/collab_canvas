@@ -4,10 +4,21 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Collaborative Canvas</title>
-<<<<<<< HEAD
     <script src="https://unpkg.com/htmx.org@1.9.2"></script>
     <script src="collab_canvas2.js"></script>
-    <link rel="stylesheet" href="styles.css">
+    <style>
+        #pixelCanvas {
+            display: grid;
+            grid-template-columns: repeat(50, 20px);
+            gap: 1px;
+            background-color: #ccc;
+        }
+        .pixel {
+            width: 20px;
+            height: 20px;
+            background-color: white;
+        }
+    </style>
 </head>
 <body>
     <div id="stats"></div>
@@ -15,18 +26,37 @@
     <div id="canvasContainer">
         <div id="pixelCanvas" hx-ws="connect:/ws"></div>
     </div>
-=======
-    <link rel="stylesheet" href="styles.css">
-</head>
-<body>
-    <header>
-        <div id="stats"></div>
-        <input type="color" id="colorPicker" value="#000000">
-    </header>
-    <div id="canvasContainer">
-        <div id="pixelCanvas"></div>
-    </div>
-    <script type="module" src="script.js"></script>
->>>>>>> origin/main
+    <script>
+        const canvas = new Canvas(50, 500);
+        const pixelCanvas = document.getElementById('pixelCanvas');
+        const colorPicker = document.getElementById('colorPicker');
+
+        for (let y = 0; y < 500; y++) {
+            for (let x = 0; x < 50; x++) {
+                const pixel = document.createElement('div');
+                pixel.className = 'pixel';
+                pixel.dataset.x = x;
+                pixel.dataset.y = y;
+                pixel.addEventListener('click', handlePixelClick);
+                pixelCanvas.appendChild(pixel);
+            }
+        }
+
+        function handlePixelClick(event) {
+            const x = parseInt(event.target.dataset.x);
+            const y = parseInt(event.target.dataset.y);
+            const color = colorPicker.value;
+            canvas.update_pixel(x, y, color);
+            event.target.style.backgroundColor = color;
+            const update = canvas.serialize_update(x, y, color);
+            htmx.find('#pixelCanvas').dispatchEvent(new CustomEvent('htmx:wsReconnect'));
+        }
+
+        document.body.addEventListener('htmx:wsAfterMessage', (event) => {
+            const update = JSON.parse(event.detail.message);
+            const pixel = pixelCanvas.children[update.y * 50 + update.x];
+            pixel.style.backgroundColor = update.color;
+        });
+    </script>
 </body>
 </html>
