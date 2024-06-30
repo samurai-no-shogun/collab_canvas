@@ -1,0 +1,1 @@
+web: ./target/release/collaborative_canvas_server

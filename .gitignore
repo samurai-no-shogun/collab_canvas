@@ -1,1 +1,6 @@
 /target
+<<<<<<< HEAD
+=======
+/server/target
+/server/Cargo.lock
+>>>>>>> origin/main
