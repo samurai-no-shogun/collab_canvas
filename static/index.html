@@ -1,0 +1,18 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Collaborative Canvas</title>
+    <script src="https://unpkg.com/htmx.org@1.9.2"></script>
+    <script src="collab_canvas2.js"></script>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div id="stats"></div>
+    <input type="color" id="colorPicker" value="#000000">
+    <div id="canvasContainer">
+        <div id="pixelCanvas" hx-ws="connect:/ws"></div>
+    </div>
+</body>
+</html>
